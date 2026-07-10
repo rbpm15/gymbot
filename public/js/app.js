@@ -225,7 +225,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     if (registrationForm && modalSuccess) {
-        registrationForm.addEventListener('submit', (e) => {
+        registrationForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             // Gather input values
@@ -234,16 +234,40 @@ document.addEventListener('DOMContentLoaded', () => {
             const phone = document.getElementById('regPhone').value;
             const plan = selectedPlanInput.value;
             
-            console.log("Registro recibido:", { name, email, phone, plan });
-            
-            // Hide form and show success message
-            registrationForm.style.display = 'none';
-            modalSuccess.classList.add('active');
-            
-            // Auto close after 3 seconds
-            setTimeout(() => {
-                registrationModal.classList.remove('active');
-            }, 3000);
+            // Show loading state on submit button
+            const submitBtn = registrationForm.querySelector('button[type="submit"]');
+            const originalBtnText = submitBtn.textContent;
+            submitBtn.textContent = 'Enviando...';
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch('/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ name, email, phone, plan })
+                });
+
+                if (!response.ok) {
+                    throw new Error('El servidor respondió con un error.');
+                }
+
+                // Hide form and show success message
+                registrationForm.style.display = 'none';
+                modalSuccess.classList.add('active');
+                
+                // Auto close after 3 seconds
+                setTimeout(() => {
+                    registrationModal.classList.remove('active');
+                }, 3000);
+            } catch (error) {
+                console.error("Error submitting registration:", error);
+                alert("Hubo un problema al guardar tus datos. Inténtalo de nuevo.");
+            } finally {
+                submitBtn.textContent = originalBtnText;
+                submitBtn.disabled = false;
+            }
         });
     }
 });
