@@ -590,29 +590,82 @@ h1, h2, h3, h4 {
 }
 
 .typing-indicator {
-    background: rgba(255, 255, 255, 0.1);
-    padding: 10px 15px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 12px 18px;
     border-radius: 15px;
     align-self: flex-start;
     display: flex;
-    gap: 5px;
-    width: 60px;
+    flex-direction: column;
+    gap: 8px;
+    width: 250px;
+    border: 1px solid rgba(0, 242, 254, 0.1);
+    position: relative;
+    overflow: hidden;
 }
 
-.typing-dot {
-    width: 8px;
-    height: 8px;
-    background: var(--text-muted);
-    border-radius: 50%;
-    animation: typing 1.4s infinite ease-in-out;
+.typing-indicator::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -150px;
+    height: 100%;
+    width: 150px;
+    background: linear-gradient(to right, transparent, rgba(0, 242, 254, 0.15), transparent);
+    animation: shimmer 1.5s infinite linear;
 }
-.typing-dot:nth-child(1) { animation-delay: 0s; }
-.typing-dot:nth-child(2) { animation-delay: 0.2s; }
-.typing-dot:nth-child(3) { animation-delay: 0.4s; }
 
-@keyframes typing {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-4px); }
+@keyframes shimmer {
+    to {
+        left: 100%;
+    }
+}
+
+.loading-text {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.loading-text::before {
+    content: "⚡";
+    animation: spin 2s infinite linear;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.loading-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+}
+
+.loading-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: linear-gradient(to right, var(--primary), var(--primary-hover));
+    animation: loadingBarPulse 1.2s infinite ease-in-out;
+}
+
+.loading-bar:nth-child(1) { width: 40%; animation-delay: 0s; }
+.loading-bar:nth-child(2) { width: 85%; animation-delay: 0.2s; }
+.loading-bar:nth-child(3) { width: 60%; animation-delay: 0.4s; }
+
+@keyframes loadingBarPulse {
+    0%, 100% {
+        opacity: 0.4;
+        transform: scaleX(1);
+    }
+    50% {
+        opacity: 1;
+        transform: scaleX(1.03);
+    }
 }
 
 .chat-quick-actions {
@@ -865,3 +918,110 @@ h1, h2, h3, h4 {
     font-size: 0.95rem;
     color: var(--text-light);
 }
+
+/* Loading Sequence */
+.loading-sequence {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 15px 20px;
+    border-radius: 15px;
+    align-self: flex-start;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 280px;
+    border: 1px solid rgba(0, 242, 254, 0.15);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.loading-sequence::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -150px;
+    height: 100%;
+    width: 150px;
+    background: linear-gradient(to right, transparent, rgba(0, 242, 254, 0.08), transparent);
+    animation: shimmer 2s infinite linear;
+}
+
+.loading-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    transition: all 0.4s ease;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+}
+
+.loading-step.visible {
+    opacity: 0.6;
+    max-height: 40px;
+}
+
+.loading-step.active {
+    opacity: 1;
+    max-height: 40px;
+    color: var(--text-light);
+}
+
+.loading-step.completed {
+    opacity: 0.8;
+    max-height: 40px;
+    color: var(--text-muted);
+}
+
+.step-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    font-size: 0.95rem;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.step-icon.spinner {
+    border: 2px solid rgba(0, 242, 254, 0.2);
+    border-top-color: var(--primary);
+    animation: spin 1s infinite linear;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 3px;
+}
+
+.step-icon.check {
+    color: #00e676; /* Green checkmark */
+    font-weight: bold;
+    font-size: 1rem;
+    margin-right: 3px;
+}
+
+.step-icon.sparkle {
+    color: var(--primary);
+    font-size: 1.1rem;
+    margin-right: 3px;
+    animation: sparklePulse 1.5s infinite ease-in-out;
+}
+
+@keyframes sparklePulse {
+    0%, 100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 0.8;
+        color: var(--primary);
+    }
+    50% {
+        transform: scale(1.2) rotate(15deg);
+        opacity: 1;
+        color: var(--primary-hover);
+    }
+}
+

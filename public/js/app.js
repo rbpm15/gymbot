@@ -64,6 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Send Message
+    // Send Message
     const sendMessage = async (text) => {
         if (!text.trim()) return;
 
@@ -76,11 +77,21 @@ document.addEventListener('DOMContentLoaded', () => {
             quickActions.style.display = 'none';
         }
 
-        // Show typing indicator
-        const typingId = showTypingIndicator();
+        // Show loading sequence
+        const loader = showLoadingSequence();
+
+        let isDone = false;
+        let timeoutIds = [];
+
+        const cleanup = () => {
+            isDone = true;
+            timeoutIds.forEach(clearTimeout);
+            loader.remove();
+        };
 
         try {
-            const response = await fetch('/chat', {
+            // Start fetch in background
+            const fetchPromise = fetch('/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -88,7 +99,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ message: text })
             });
 
-            removeTypingIndicator(typingId);
+            // Schedule the steps (will only run if fetch hasn't completed yet)
+            const scheduleStep = (stepNumber, delay) => {
+                const tId = setTimeout(() => {
+                    if (!isDone) {
+                        loader.transitionToStep(stepNumber);
+                    }
+                }, delay);
+                timeoutIds.push(tId);
+            };
+
+            // Schedule steps: 2 at 700ms, 3 at 1400ms, 4 at 2100ms
+            scheduleStep(2, 700);
+            scheduleStep(3, 1400);
+            scheduleStep(4, 2100);
+
+            // Wait for API response
+            const response = await fetchPromise;
+
+            // Once API response is here, we show it immediately!
+            cleanup();
 
             if (!response.ok) {
                 try {
@@ -101,10 +131,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const data = await response.json();
-            addMessage(data.reply, 'bot-message');
+            await addBotMessageProgressively(data.reply);
         } catch (error) {
             console.error('Error:', error);
-            removeTypingIndicator(typingId);
+            cleanup();
             addMessage('Hubo un error de conexión.', 'bot-message');
         }
     };
@@ -139,24 +169,123 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollToBottom();
     };
 
-    const showTypingIndicator = () => {
-        const id = 'typing-' + Date.now();
-        const typingDiv = document.createElement('div');
-        typingDiv.className = 'typing-indicator';
-        typingDiv.id = id;
-        typingDiv.innerHTML = `
-            <div class="typing-dot"></div>
-            <div class="typing-dot"></div>
-            <div class="typing-dot"></div>
-        `;
-        chatMessages.appendChild(typingDiv);
+    const addBotMessageProgressively = async (text) => {
+        if (!text) return;
+        
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'message bot-message';
+        chatMessages.appendChild(msgDiv);
         scrollToBottom();
-        return id;
+
+        // Split text by double newlines or single newlines that form paragraph blocks
+        const rawParagraphs = text.replace(/\\n/g, '\n').split(/\n\s*\n/);
+        
+        for (let i = 0; i < rawParagraphs.length; i++) {
+            if (!rawParagraphs[i].trim()) continue;
+
+            if (i > 0) {
+                const spacer = document.createElement('div');
+                spacer.style.height = '10px';
+                msgDiv.appendChild(spacer);
+            }
+
+            const pSpan = document.createElement('span');
+            pSpan.style.opacity = '0';
+            pSpan.style.display = 'block';
+            pSpan.style.transition = 'opacity 0.4s ease';
+            pSpan.innerHTML = formatMarkdown(rawParagraphs[i]);
+            msgDiv.appendChild(pSpan);
+            
+            // Force reflow
+            pSpan.offsetHeight;
+            pSpan.style.opacity = '1';
+            
+            scrollToBottom();
+            
+            if (i < rawParagraphs.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 400));
+            }
+        }
     };
 
-    const removeTypingIndicator = (id) => {
-        const el = document.getElementById(id);
-        if (el) el.remove();
+    const showLoadingSequence = () => {
+        const id = 'loading-' + Date.now();
+        const seqDiv = document.createElement('div');
+        seqDiv.className = 'loading-sequence';
+        seqDiv.id = id;
+        
+        seqDiv.innerHTML = `
+            <div class="loading-step visible active" id="${id}-step1">
+                <span class="step-icon spinner"></span>
+                <span class="step-text">Analizando tu solicitud...</span>
+            </div>
+            <div class="loading-step" id="${id}-step2">
+                <span class="step-icon"></span>
+                <span class="step-text">Identificación de detalles clave</span>
+            </div>
+            <div class="loading-step" id="${id}-step3">
+                <span class="step-icon"></span>
+                <span class="step-text">Encontrar información relevante</span>
+            </div>
+            <div class="loading-step" id="${id}-step4">
+                <span class="step-icon"></span>
+                <span class="step-text">Revisando la información recopilada</span>
+            </div>
+        `;
+        
+        chatMessages.appendChild(seqDiv);
+        scrollToBottom();
+
+        let currentStep = 1;
+
+        return {
+            id,
+            getCurrentStep: () => currentStep,
+            transitionToStep: (stepNumber) => {
+                // Mark previous step as completed
+                const prevId = `${id}-step${stepNumber - 1}`;
+                const prevEl = document.getElementById(prevId);
+                if (prevEl) {
+                    prevEl.className = 'loading-step visible completed';
+                    const icon = prevEl.querySelector('.step-icon');
+                    if (icon) {
+                        icon.className = 'step-icon check';
+                        icon.innerHTML = '✓';
+                    }
+                    const textEl = prevEl.querySelector('.step-text');
+                    if (textEl) {
+                        textEl.textContent = textEl.textContent.replace('...', '');
+                    }
+                }
+
+                // Set current step as active
+                const currId = `${id}-step${stepNumber}`;
+                const currEl = document.getElementById(currId);
+                if (currEl) {
+                    currEl.className = 'loading-step visible active';
+                    const icon = currEl.querySelector('.step-icon');
+                    if (icon) {
+                        if (stepNumber === 4) {
+                            icon.className = 'step-icon sparkle';
+                            icon.innerHTML = '✦';
+                        } else {
+                            icon.className = 'step-icon spinner';
+                            icon.innerHTML = '';
+                        }
+                    }
+                    const textEl = currEl.querySelector('.step-text');
+                    if (textEl && !textEl.textContent.endsWith('...')) {
+                        textEl.textContent += '...';
+                    }
+                    scrollToBottom();
+                }
+                currentStep = stepNumber;
+            },
+            remove: () => {
+                const el = document.getElementById(id);
+                if (el) el.remove();
+            }
+        };
     };
 
     const scrollToBottom = () => {
